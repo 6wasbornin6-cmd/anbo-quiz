@@ -1,0 +1,38 @@
+name: 매일 오전 8시 퀴즈 자동 생성
+
+on:
+  schedule:
+    # UTC 23:00 = KST 08:00
+    - cron: '0 23 * * *'
+  workflow_dispatch:  # 수동 실행도 가능
+
+jobs:
+  generate-quiz:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 의존성 설치
+        run: npm install
+
+      - name: 퀴즈 생성
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/generate.js
+
+      - name: 변경사항 커밋 & 푸시
+        run: |
+          git config user.name "Quiz Bot"
+          git config user.email "quiz-bot@github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "퀴즈 자동 업데이트: $(date '+%Y-%m-%d')"
+          git push
