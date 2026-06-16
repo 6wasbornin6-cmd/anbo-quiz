@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>안보퀴즈 ARCADE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky: #7dd3f0;
+  --navy: #0a1628;
+  --navy2: #162840;
+  --navy3: #1e3254;
+  --gold: #f5c842;
+  --gold2: #e0a800;
+  --green: #3ecf5a;
+  --green2: #28a03f;
+  --pink: #ff6eb4;
+  --pink2: #e0509a;
+  --red: #e84040;
+  --blue: #3a7bd5;
+  --purple: #7c4dff;
+  --card: #1a2f50;
+  --card2: #0f2040;
+  --border-px: 3px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:#07101f;min-height:100vh;overflow-x:hidden;color:#e8eaf0;}
+
+/* ── PIXEL FONT EFFECT ── */
+.pixel{letter-spacing:0.05em;font-weight:900;}
+
+/* ── SCANLINE OVERLAY ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+  pointer-events:none;z-index:9999;
+}
+
+/* ── HEADER ── */
+.site-header{
+  background:var(--navy);
+  border-bottom:4px solid var(--gold);
+  padding:0 1rem;
+  height:52px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:200;
+}
+.logo{color:var(--gold);font-size:20px;font-weight:900;letter-spacing:0.05em;text-shadow:2px 2px 0 var(--gold2);}
+.logo em{color:var(--sky);font-style:normal;}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+.streak-badge{
+  background:var(--gold);color:var(--navy);
+  font-size:12px;font-weight:700;
+  padding:4px 10px;border-radius:4px;
+  border-bottom:3px solid var(--gold2);
+}
+.conn-dot{width:10px;height:10px;border-radius:50%;background:#f87171;transition:background 0.3s;}
+.conn-dot.live{background:#4ade80;box-shadow:0 0 8px #4ade80;}
+
+/* ── TICKER ── */
+.ticker{
+  background:var(--navy2);border-bottom:2px solid var(--blue);
+  height:30px;display:flex;align-items:center;overflow:hidden;
+}
+.ticker-badge{background:var(--red);color:#fff;font-size:10px;font-weight:700;letter-spacing:0.1em;padding:0 10px;height:100%;display:flex;align-items:center;flex-shrink:0;}
+.ticker-inner{display:flex;white-space:nowrap;animation:tick 50s linear infinite;}
+.ticker-item{font-size:12px;color:#8bacc8;padding-right:3rem;}
+.ticker-item::before{content:"● ";color:var(--gold);font-size:8px;}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ── CALENDAR NAV ── */
+.cal-section{
+  background:#0a1628;
+  border-bottom:3px solid #0f2040;
+  padding:0.75rem 1rem;
+}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;}
+.cal-title{color:var(--gold);font-size:14px;font-weight:700;}
+.month-nav{display:flex;gap:6px;}
+.month-btn{
+  background:var(--navy2);color:#8bacc8;
+  border:1px solid #2d4a6e;border-radius:4px;
+  font-size:12px;padding:3px 10px;cursor:pointer;font-family:inherit;
+  transition:all 0.15s;
+}
+.month-btn:hover,.month-btn.active{background:var(--gold);color:var(--navy);border-color:var(--gold);}
+.day-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}
+.day-scroll::-webkit-scrollbar{display:none;}
+.day-btn{
+  flex-shrink:0;
+  background:var(--navy2);border:2px solid #2d4a6e;border-radius:8px;
+  padding:6px 10px;cursor:pointer;font-family:inherit;text-align:center;
+  transition:all 0.15s;min-width:50px;
+}
+.day-btn .day-num{font-size:16px;font-weight:700;color:#8bacc8;display:block;}
+.day-btn .day-label{font-size:10px;color:#4a6280;display:block;}
+.day-btn .day-dot{width:6px;height:6px;border-radius:50%;background:#2d4a6e;margin:3px auto 0;}
+.day-btn.has-quiz .day-dot{background:var(--green);}
+.day-btn.active{border-color:var(--gold);background:rgba(245,200,66,0.1);}
+.day-btn.active .day-num{color:var(--gold);}
+.day-btn.today{border-color:var(--blue);}
+.day-btn.today .day-num{color:var(--sky);}
+
+/* ── SETUP SCREEN ── */
+.screen{display:none;max-width:620px;margin:0 auto;padding:1rem;}
+.screen.active{display:block;}
+
+.setup-card{
+  background:var(--card);
+  border:2px solid #2a4060;
+  border-bottom:4px solid #0a1628;
+  border-radius:12px;
+  padding:1.4rem;
+  margin-bottom:1rem;
+}
+.setup-card h2{color:var(--gold);font-size:16px;font-weight:700;margin-bottom:1rem;letter-spacing:0.03em;}
+.field-label{font-size:14px;color:#a0bcd8;margin-bottom:8px;font-weight:600;}
+.field-row{margin-bottom:1.1rem;}
+input[type="password"],input[type="text"],select{
+  width:100%;padding:11px 14px;
+  border:2px solid #2d4a6e;border-radius:8px;
+  font-size:15px;background:#0d1f3c;color:#e8eaf0;
+  outline:none;font-family:inherit;
+  transition:border-color 0.15s;
+}
+input:focus,select:focus{border-color:var(--gold);}
+.input-hint{font-size:13px;color:#4a6280;margin-top:6px;line-height:1.5;}
+.input-hint a{color:var(--sky);}
+
+.topic-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.topic-chip{
+  padding:10px 12px;border:2px solid #2d4a6e;border-radius:8px;
+  font-size:14px;cursor:pointer;text-align:center;
+  background:#0d1f3c;color:#8bacc8;
+  transition:all 0.15s;user-select:none;font-family:inherit;
+  border-bottom:3px solid #000;
+}
+.topic-chip:hover{border-color:#4a6a8a;}
+.topic-chip.selected{border-color:var(--gold);background:rgba(245,200,66,0.1);color:var(--gold);border-bottom-color:var(--gold2);}
+
+.btn-start{
+  width:100%;background:var(--gold);color:var(--navy);
+  border:none;border-bottom:5px solid var(--gold2);
+  border-radius:10px;padding:16px;
+  font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;
+  letter-spacing:0.05em;transition:all 0.1s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-start:hover{transform:translateY(-1px);}
+.btn-start:active{transform:translateY(3px);border-bottom-width:2px;}
+.btn-start:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+
+.error-box{
+  background:rgba(232,64,64,0.15);border:1px solid var(--red);
+  border-radius:8px;padding:0.75rem 1rem;color:#ff8080;
+  font-size:13px;margin-bottom:0.75rem;display:none;
+}
+.error-box.show{display:block;}
+
+/* ── LOADING ── */
+#screen-loading{
+  text-align:center;padding:3rem 1rem;
+  background:#07101f;min-height:60vh;
+}
+.loading-orb{
+  width:60px;height:60px;border-radius:50%;
+  border:4px solid rgba(245,200,66,0.2);
+  border-top-color:var(--gold);
+  animation:spin 0.8s linear infinite;
+  margin:0 auto 1.5rem;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-steps{list-style:none;display:inline-block;text-align:left;margin-top:1rem;}
+.loading-steps li{font-size:15px;color:#4a6280;padding:6px 0;display:flex;align-items:center;gap:10px;}
+.loading-steps li.done{color:var(--green);}
+.loading-steps li.active{color:var(--gold);}
+.step-icon{width:20px;height:20px;border-radius:50%;background:#1e3254;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+.loading-steps li.done .step-icon{background:var(--green);color:#fff;}
+.loading-steps li.active .step-icon{background:var(--gold);color:var(--navy);animation:pulse 0.8s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+
+/* ── TOP HUD ── */
+.hud{
+  background:var(--navy);
+  border-bottom:3px solid #000;
+  padding:0.5rem 1rem;
+  display:flex;align-items:center;gap:10px;
+  position:sticky;top:52px;z-index:100;
+}
+.hud-score{
+  background:var(--navy2);border:2px solid var(--gold);border-radius:6px;
+  padding:4px 12px;color:var(--gold);font-size:13px;font-weight:700;
+  min-width:70px;text-align:center;
+}
+.hud-bar-wrap{flex:1;height:18px;background:#000;border-radius:4px;overflow:hidden;border:2px solid #2d4a6e;position:relative;}
+.hud-bar-fill{height:100%;background:linear-gradient(90deg,var(--green),#7eff6e);border-radius:2px;transition:width 0.4s ease;}
+.hud-bar-text{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:#fff;}
+.hud-timer{
+  background:var(--navy2);border:2px solid var(--pink);border-radius:6px;
+  padding:4px 10px;color:var(--pink);font-size:13px;font-weight:700;min-width:50px;text-align:center;
+}
+.hud-qnum{color:#4a6280;font-size:12px;white-space:nowrap;}
+
+/* ── QUIZ SCREEN ── */
+#screen-quiz{padding:0.75rem;max-width:620px;margin:0 auto;}
+
+.q-card{
+  background:var(--card);
+  border:2px solid #2a4060;
+  border-bottom:5px solid #0a1628;
+  border-radius:14px;
+  padding:1.4rem;
+  margin-bottom:10px;
+  animation:slideIn 0.3s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.q-top{display:flex;align-items:center;gap:8px;margin-bottom:0.85rem;}
+.q-tag{
+  font-size:12px;font-weight:700;letter-spacing:0.05em;
+  padding:4px 11px;border-radius:4px;border-bottom:2px solid;
+}
+.tag-nk{background:rgba(232,64,64,0.2);color:#ff9090;border-color:rgba(232,64,64,0.4);}
+.tag-int{background:rgba(58,123,213,0.2);color:#90b8ff;border-color:rgba(58,123,213,0.4);}
+.tag-us{background:rgba(62,207,90,0.15);color:#80df90;border-color:rgba(62,207,90,0.35);}
+.tag-other{background:rgba(255,255,255,0.08);color:#a0b0c0;border-color:rgba(255,255,255,0.15);}
+.q-source-small{font-size:12px;color:#4a6280;margin-left:auto;}
+
+.q-text{
+  font-size:18px;font-weight:700;color:#f0f4ff;
+  line-height:1.7;margin-bottom:1.2rem;
+}
+
+/* ── OPTIONS ── */
+.options{display:flex;flex-direction:column;gap:8px;margin-bottom:0.75rem;}
+.opt{
+  background:#fff;
+  border:2px solid #c8d8e8;
+  border-bottom:4px solid #a0b8cc;
+  border-radius:8px;
+  padding:12px 14px;
+  font-size:14px;color:var(--navy);
+  cursor:pointer;display:flex;align-items:flex-start;gap:10px;
+  text-align:left;font-family:inherit;font-weight:500;
+  transition:all 0.12s;line-height:1.5;
+}
+.opt:hover:not(:disabled){border-color:var(--blue);border-bottom-color:#1a5ab5;background:#f0f6ff;transform:translateY(-1px);}
+.opt:active:not(:disabled){transform:translateY(2px);border-bottom-width:2px;}
+.opt-num{
+  width:26px;height:26px;min-width:26px;border-radius:6px;
+  background:#e8f0f8;color:#3a7bd5;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;margin-top:1px;
+  transition:all 0.12s;
+}
+.opt.correct{border-color:var(--green)!important;border-bottom-color:var(--green2)!important;background:#efffef!important;}
+.opt.correct .opt-num{background:var(--green);color:#fff;}
+.opt.wrong{border-color:var(--red)!important;border-bottom-color:#a00!important;background:#fff0f0!important;}
+.opt.wrong .opt-num{background:var(--red);color:#fff;}
+.opt.dim{opacity:0.4;}
+.opt:disabled{cursor:default;}
+
+/* ── FEEDBACK ── */
+.feedback-box{
+  background:var(--navy);
+  border:2px solid var(--gold);
+  border-radius:10px;
+  padding:1rem 1.1rem;
+  margin-top:10px;
+  display:none;
+  animation:fadeIn 0.25s ease;
+}
+.feedback-box.show{display:block;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.fb-header{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:0.6rem;padding-bottom:0.5rem;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+}
+.fb-result{
+  font-size:13px;font-weight:700;letter-spacing:0.05em;
+  padding:2px 10px;border-radius:4px;
+}
+.fb-result.ok{background:var(--green);color:#fff;}
+.fb-result.ng{background:var(--red);color:#fff;}
+.fb-label{color:#8bacc8;font-size:11px;letter-spacing:0.08em;font-weight:700;}
+.fb-correct-ans{font-size:12px;color:var(--gold);font-weight:600;margin-bottom:0.6rem;}
+.fb-explain{font-size:13px;color:#c8d8e8;line-height:1.7;margin-bottom:0.75rem;}
+.fb-wrong-list{margin-bottom:0.75rem;}
+.fb-wrong-item{
+  background:rgba(255,255,255,0.05);border-left:3px solid #2d4a6e;
+  border-radius:0 6px 6px 0;padding:7px 10px;margin-bottom:6px;
+  font-size:12px;color:#8bacc8;line-height:1.6;
+}
+.fb-wrong-item strong{color:#a0bdd6;display:block;margin-bottom:2px;}
+.fb-stat{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.2);
+  border-radius:6px;padding:6px 10px;
+}
+.fb-stat-icon{font-size:14px;}
+.fb-stat-text{font-size:11px;color:#8bacc8;}
+.fb-stat-text strong{color:var(--gold);}
+.fb-link{display:inline-flex;align-items:center;gap:4px;color:var(--sky);font-size:12px;text-decoration:none;margin-top:6px;}
+.fb-link:hover{text-decoration:underline;}
+
+/* ── NEXT BTN ── */
+.btn-next{
+  width:100%;background:var(--pink);color:#fff;
+  border:none;border-bottom:5px solid var(--pink2);
+  border-radius:10px;padding:14px;
+  font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;
+  letter-spacing:0.05em;transition:all 0.1s;
+  display:none;align-items:center;justify-content:center;gap:6px;
+  margin-top:10px;
+}
+.btn-next.show{display:flex;}
+.btn-next:hover{transform:translateY(-2px);}
+.btn-next:active{transform:translateY(3px);border-bottom-width:2px;}
+
+/* ── RESULT SCREEN ── */
+#screen-result{text-align:center;padding:1rem;max-width:600px;margin:0 auto;}
+.result-card{
+  background:var(--navy);border:3px solid var(--gold);
+  border-bottom:6px solid var(--gold2);border-radius:16px;
+  padding:2rem 1.5rem;
+}
+.result-title{color:var(--gold);font-size:22px;font-weight:900;letter-spacing:0.05em;margin-bottom:0.5rem;}
+.score-display{font-size:72px;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.02em;}
+.score-denom{font-size:18px;color:#8bacc8;margin-bottom:1rem;}
+.grade-badge{
+  display:inline-block;padding:6px 24px;border-radius:6px;
+  font-size:15px;font-weight:700;margin-bottom:1.5rem;border-bottom:3px solid;
+}
+.g-s{background:var(--gold);color:var(--navy);border-color:var(--gold2);}
+.g-a{background:var(--green);color:#fff;border-color:var(--green2);}
+.g-b{background:var(--blue);color:#fff;border-color:#1a5ab5;}
+.g-c{background:var(--red);color:#fff;border-color:#a00;}
+.result-breakdown{text-align:left;margin-bottom:1.5rem;border-top:1px solid rgba(255,255,255,0.1);padding-top:1rem;}
+.breakdown-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;}
+.breakdown-label{color:#8bacc8;}
+.breakdown-val{font-weight:700;color:var(--gold);}
+.result-btns{display:flex;gap:8px;}
+.btn-retry{
+  flex:1;background:var(--gold);color:var(--navy);
+  border:none;border-bottom:4px solid var(--gold2);border-radius:8px;
+  padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;
+  transition:all 0.1s;
+}
+.btn-retry:active{transform:translateY(2px);border-bottom-width:2px;}
+.btn-back{
+  background:var(--navy2);color:#8bacc8;
+  border:2px solid #2d4a6e;border-radius:8px;
+  padding:13px 16px;font-size:13px;cursor:pointer;font-family:inherit;
+  transition:all 0.1s;
+}
+
+/* ── COMBO FLASH ── */
+.combo-flash{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+  background:var(--gold);color:var(--navy);
+  font-size:28px;font-weight:900;padding:10px 28px;border-radius:10px;
+  pointer-events:none;z-index:9000;
+  transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.combo-flash.show{transform:translate(-50%,-50%) scale(1);}
+.combo-flash.hide{transform:translate(-50%,-70%) scale(0);opacity:0;}
+
+/* ── PIXEL DECORATIONS ── */
+.pixel-cloud{
+  position:fixed;bottom:0;left:0;right:0;height:60px;
+  background:linear-gradient(180deg,transparent,rgba(10,22,40,0.6));
+  pointer-events:none;z-index:0;
+}
+
+@media(max-width:480px){
+  .q-text{font-size:15px;}
+  .opt{font-size:13px;padding:10px 12px;}
+  .topic-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="logo pixel">안보<em>QUIZ</em></div>
+  <div class="hdr-right">
+    <div class="streak-badge" id="streak-el">🔥 0일</div>
+    <div class="conn-dot" id="conn-dot"></div>
+  </div>
+</header>
+
+<div class="ticker">
+  <div class="ticker-badge">LIVE</div>
+  <div class="ticker-inner" id="ticker-inner">
+    <span class="ticker-item">뉴스 연동 대기 중...</span>
+    <span class="ticker-item">국제정세 업데이트 준비</span>
+    <span class="ticker-item">뉴스 연동 대기 중...</span>
+    <span class="ticker-item">국제정세 업데이트 준비</span>
+  </div>
+</div>
+
+<!-- CALENDAR NAV -->
+<div class="cal-section">
+  <div class="cal-header">
+    <div class="cal-title" id="cal-month-title">2025년 6월</div>
+    <div class="month-nav" id="month-nav"></div>
+  </div>
+  <div class="day-scroll" id="day-scroll"></div>
+</div>
+
+<!-- SETUP -->
+<div id="screen-setup" class="screen active">
+  <div style="height:1rem"></div>
+  <div class="setup-card">
+    <h2>🔑 API 설정</h2>
+    <div class="field-row">
+      <div class="field-label">Anthropic API 키</div>
+      <input type="password" id="api-key" placeholder="sk-ant-...">
+      <div class="input-hint">키 없으면 <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> 에서 무료 발급 → 혼자 쓰면 무료 크레딧($5)으로 수백 회 사용 가능</div>
+    </div>
+  </div>
+  <div class="setup-card">
+    <h2>⚙️ 오늘의 퀴즈 설정</h2>
+    <div class="field-row">
+      <div class="field-label">주제 선택</div>
+      <div class="topic-grid">
+        <div class="topic-chip selected" data-topic="북한 핵·미사일">🚀 북한 핵·미사일</div>
+        <div class="topic-chip selected" data-topic="북미·남북관계">🤝 북미·남북관계</div>
+        <div class="topic-chip selected" data-topic="한반도 안보">⚔️ 한반도 안보</div>
+        <div class="topic-chip selected" data-topic="국제정세">🌐 국제정세</div>
+        <div class="topic-chip" data-topic="유엔·제재">🏛️ 유엔·제재</div>
+        <div class="topic-chip" data-topic="북한 내부">🔭 북한 내부</div>
+        <div class="topic-chip" data-topic="중·러 관계">🐉 중·러 관계</div>
+        <div class="topic-chip" data-topic="NATO·인태">🛡️ NATO·인태</div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">난이도</div>
+      <select id="difficulty">
+        <option value="입문">입문 — 개념 위주</option>
+        <option value="중급" selected>중급 — 외시·공무원 수준</option>
+        <option value="고급">고급 — 전문가 수준</option>
+      </select>
+    </div>
+  </div>
+  <div class="error-box" id="err-box"><span id="err-msg"></span></div>
+  <button class="btn-start" id="btn-start" onclick="startGenerate()">
+    <span id="btn-start-text">🎮 오늘의 퀴즈 시작!</span>
+    <svg id="gen-spin" style="display:none" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="9" r="7" opacity="0.3"/><path d="M9 2a7 7 0 0 1 7 7" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen">
+  <div class="loading-orb"></div>
+  <p style="color:var(--gold);font-size:15px;font-weight:700;margin-bottom:0.25rem;">AI가 뉴스를 분석하는 중...</p>
+  <p style="color:#4a6280;font-size:12px;">BBC · VOA · 연합뉴스 · Daily NK</p>
+  <ul class="loading-steps" id="load-steps">
+    <li id="ls1"><span class="step-icon">1</span>최신 기사 검색 중</li>
+    <li id="ls2"><span class="step-icon">2</span>국제정세·북한 기사 필터링</li>
+    <li id="ls3"><span class="step-icon">3</span>20문제 생성 중</li>
+    <li id="ls4"><span class="step-icon">4</span>오답 해설 작성 중</li>
+    <li id="ls5"><span class="step-icon">5</span>퀴즈 최종 검증</li>
+  </ul>
+</div>
+
+<!-- HUD (퀴즈 중 상단 고정) -->
+<div id="quiz-hud" style="display:none">
+  <div class="hud">
+    <div class="hud-score" id="hud-score">SCORE<br><span id="score-val">0</span></div>
+    <div class="hud-bar-wrap">
+      <div class="hud-bar-fill" id="hud-fill" style="width:0%"></div>
+      <span class="hud-bar-text" id="hud-bar-txt">0/20</span>
+    </div>
+    <div class="hud-timer" id="hud-timer">--</div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="screen-quiz" class="screen">
+  <div class="q-card" id="q-card">
+    <div class="q-top">
+      <span class="q-tag" id="q-tag-el"></span>
+      <span class="q-source-small" id="q-src-el"></span>
+    </div>
+    <div class="q-text" id="q-text-el"></div>
+    <div class="options" id="opts-el"></div>
+    <div class="feedback-box" id="fb-el"></div>
+    <button class="btn-next" id="btn-next" onclick="nextQ()">NEXT ▶</button>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="screen-result" class="screen">
+  <div style="height:1rem"></div>
+  <div class="result-card">
+    <div class="result-title pixel">QUIZ CLEAR!</div>
+    <div class="score-display" id="res-score">0</div>
+    <div class="score-denom" id="res-denom">/ 20 정답</div>
+    <div class="grade-badge" id="res-grade"></div>
+    <div class="result-breakdown" id="res-breakdown"></div>
+    <div class="result-btns">
+      <button class="btn-retry" onclick="retryToday()">🔄 다시 풀기</button>
+      <button class="btn-back" onclick="backToSetup()">← 설정</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMBO FLASH -->
+<div class="combo-flash" id="combo-flash"></div>
+<div class="pixel-cloud"></div>
+
+<script>
+// ═══ STATE ═══
+let qs=[], cur=0, score=0, combo=0, timer=30, timerHandle=null;
+let catScores={}, answered=false;
+let savedApiKey='', selectedDate='', history={};
+const OPTS=['①','②','③','④'];
+
+// ═══ INIT ═══
+document.addEventListener('DOMContentLoaded',()=>{
+  const k=localStorage.getItem('anbo_key');
+  if(k) { document.getElementById('api-key').value=k; savedApiKey=k; }
+  const h=localStorage.getItem('anbo_history');
+  if(h) try{history=JSON.parse(h)}catch{}
+  renderStreak();
+  buildCalendar();
+  document.querySelectorAll('.topic-chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('selected')));
+  document.getElementById('api-key').addEventListener('input',function(){
+    if(this.value.startsWith('sk-ant-')) localStorage.setItem('anbo_key',this.value);
+  });
+});
+
+// ═══ STREAK ═══
+function renderStreak(){
+  const d=JSON.parse(localStorage.getItem('anbo_streak')||'{"n":0,"last":""}');
+  document.getElementById('streak-el').textContent=`🔥 ${d.n}일`;
+}
+function saveStreak(){
+  const today=todayStr();
+  const d=JSON.parse(localStorage.getItem('anbo_streak')||'{"n":0,"last":""}');
+  if(d.last===today) return;
+  const yd=new Date(); yd.setDate(yd.getDate()-1);
+  const yds=yd.toISOString().slice(0,10);
+  d.n=d.last===yds?d.n+1:1; d.last=today;
+  localStorage.setItem('anbo_streak',JSON.stringify(d));
+  renderStreak();
+}
+
+// ═══ CALENDAR ═══
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function buildCalendar(){
+  const now=new Date();
+  const months=[];
+  for(let i=2;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push({y:d.getFullYear(),m:d.getMonth()});
+  }
+  const nav=document.getElementById('month-nav');
+  nav.innerHTML='';
+  const KO_M=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  months.forEach((mn,i)=>{
+    const b=document.createElement('button');
+    b.className='month-btn'+(i===months.length-1?' active':'');
+    b.textContent=KO_M[mn.m];
+    b.onclick=()=>{ document.querySelectorAll('.month-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderDays(mn.y,mn.m); };
+    nav.appendChild(b);
+  });
+  renderDays(now.getFullYear(),now.getMonth());
+}
+function renderDays(y,m){
+  const KO_M=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('cal-month-title').textContent=`${y}년 ${KO_M[m]}`;
+  const scroll=document.getElementById('day-scroll');
+  scroll.innerHTML='';
+  const today=todayStr();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const KO_DOW=['일','월','화','수','목','금','토'];
+  for(let d=1;d<=daysInMonth;d++){
+    const dt=new Date(y,m,d);
+    if(dt>new Date()) continue;
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const btn=document.createElement('div');
+    btn.className='day-btn'+(history[ds]?' has-quiz':'')+(ds===today?' today':'')+(ds===selectedDate?' active':'');
+    const dow=KO_DOW[dt.getDay()];
+    btn.innerHTML=`<span class="day-num">${d}</span><span class="day-label">${dow}</span><div class="day-dot"></div>`;
+    btn.onclick=()=>selectDay(ds);
+    scroll.appendChild(btn);
+  }
+  // scroll to today
+  setTimeout(()=>{
+    const active=scroll.querySelector('.today')||scroll.querySelector('.has-quiz');
+    if(active) scroll.scrollLeft=active.offsetLeft-80;
+  },50);
+}
+function selectDay(ds){
+  selectedDate=ds;
+  document.querySelectorAll('.day-btn').forEach(b=>b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  // if this day has saved quiz, offer to load
+  if(history[ds]){
+    const use=confirm(`${ds} 퀴즈 기록이 있어요.\n저장된 퀴즈로 다시 풀까요?`);
+    if(use){ qs=history[ds].questions; showScreen('setup'); }
+  }
+}
+
+// ═══ TICKER ═══
+function setTicker(items){
+  const doubled=[...items,...items];
+  document.getElementById('ticker-inner').innerHTML=doubled.map(h=>`<span class="ticker-item">${h}</span>`).join('');
+}
+
+// ═══ SCREENS ═══
+function showScreen(id){
+  ['setup','loading','quiz','result'].forEach(s=>{
+    document.getElementById('screen-'+s).classList.toggle('active',s===id);
+  });
+  document.getElementById('quiz-hud').style.display=id==='quiz'?'block':'none';
+}
+
+// ═══ GENERATE ═══
+async function startGenerate(){
+  const key=document.getElementById('api-key').value.trim();
+  if(!key){showErr('API 키를 입력해주세요.'); return;}
+  if(!key.startsWith('sk-ant-')){showErr('sk-ant-로 시작하는 키를 입력해주세요.'); return;}
+  const topics=[...document.querySelectorAll('.topic-chip.selected')].map(c=>c.dataset.topic);
+  if(!topics.length){showErr('주제를 하나 이상 선택해주세요.'); return;}
+  const diff=document.getElementById('difficulty').value;
+  hideErr();
+  const startBtn=document.getElementById('btn-start');
+  startBtn.disabled=true;
+  document.getElementById('btn-start-text').textContent='생성 중...';
+  document.getElementById('gen-spin').style.display='block';
+  showScreen('loading');
+  setStep(1);
+  try{
+    const today=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+    const sys=`당신은 외교·안보 퀴즈 전문 출제자입니다. 순수 JSON만 반환하세요. 마크다운 없이.
+형식:
+{
+  "headlines":["헤드라인1",...10개],
+  "questions":[
+    {
+      "topic":"주제",
+      "tag_class":"tag-nk|tag-int|tag-us|tag-other",
+      "question":"질문",
+      "options":["보기1","보기2","보기3","보기4"],
+      "answer":0,
+      "explanation":"정답 해설 2~3문장",
+      "wrong_explanations":["①번 오답 이유","②번 오답 이유(정답이면 빈문자열)","③번 오답 이유","④번 오답 이유"],
+      "source":"출처 매체 날짜",
+      "source_url":"https://...",
+      "correct_rate":61
+    }
+  ]
+}
+tag_class: 북한관련→tag-nk, 미국/NATO→tag-us, 그외→tag-int`;
+    const prompt=`오늘(${today}) 기준 최신 뉴스를 검색해서 ${topics.join(', ')} 관련 퀴즈 20문제를 만들어주세요.
+난이도: ${diff}
+뉴스 출처: BBC Korea, VOA 한국어, 연합뉴스, Daily NK, NK News, 외교부, 로이터, AP
+요구사항:
+- 최근 2~4주 이내 실제 뉴스 기반 문제만 출제
+- 각 문제에 구체적 날짜·인물·수치 포함
+- wrong_explanations: 정답 보기는 빈문자열(""), 오답 보기는 왜 틀렸는지 1~2문장 설명
+- correct_rate: 예상 정답률 (30~90 사이 숫자)
+- headlines: 오늘의 주요 뉴스 헤드라인 10개`;
+    setTimeout(()=>setStep(2),4000);
+    setTimeout(()=>setStep(3),9000);
+    setTimeout(()=>setStep(4),16000);
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',max_tokens:12000,
+        tools:[{type:'web_search_20250305',name:'web_search',max_uses:10}],
+        system:sys,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||`API 오류 ${resp.status}`);}
+    const data=await resp.json();
+    setStep(5);
+    let raw=data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    raw=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    const m=raw.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('응답 파싱 실패. 다시 시도해주세요.');
+    const parsed=JSON.parse(m[0]);
+    qs=parsed.questions||[];
+    if(qs.length<5) throw new Error('문제가 충분히 생성되지 않았어요. 다시 시도해주세요.');
+    if(parsed.headlines?.length) setTicker(parsed.headlines);
+    document.getElementById('conn-dot').classList.add('live');
+    // save to history
+    const ds=todayStr();
+    history[ds]={questions:qs,generated:new Date().toISOString()};
+    localStorage.setItem('anbo_history',JSON.stringify(history));
+    buildCalendar();
+    setTimeout(()=>{ showScreen('quiz'); startQuiz(); },600);
+  }catch(e){
+    showScreen('setup');
+    showErr(e.message||'오류가 발생했어요.');
+  } finally {
+    startBtn.disabled=false;
+    document.getElementById('btn-start-text').textContent='🎮 오늘의 퀴즈 시작!';
+    document.getElementById('gen-spin').style.display='none';
+  }
+}
+function setStep(n){
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById(`ls${i}`);
+    el.className=i<n?'done':i===n?'active':'';
+  }
+}
+
+// ═══ QUIZ ═══
+function startQuiz(){
+  cur=0;score=0;combo=0;answered=false;catScores={};
+  renderQ();
+}
+function renderQ(){
+  const q=qs[cur];
+  answered=false;
+  clearInterval(timerHandle); timer=30; updateTimer();
+  timerHandle=setInterval(()=>{
+    timer--;updateTimer();
+    if(timer<=0){clearInterval(timerHandle);autoTimeOut();}
+  },1000);
+  const pct=((cur)/qs.length)*100;
+  document.getElementById('hud-fill').style.width=pct+'%';
+  document.getElementById('hud-bar-txt').textContent=`${cur}/${qs.length}`;
+  document.getElementById('score-val').textContent=score;
+  const tagEl=document.getElementById('q-tag-el');
+  tagEl.textContent=q.topic; tagEl.className='q-tag '+(q.tag_class||'tag-other');
+  document.getElementById('q-src-el').innerHTML=q.source_url&&q.source_url!=='https://...'
+    ?`<a href="${q.source_url}" target="_blank" style="color:#5b9bd5;text-decoration:none">${q.source}</a>`
+    :q.source||'';
+  document.getElementById('q-text-el').textContent=q.question;
+  const optsEl=document.getElementById('opts-el');
+  optsEl.innerHTML='';
+  q.options.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='opt';
+    btn.innerHTML=`<span class="opt-num">${OPTS[i]}</span><span>${opt}</span>`;
+    btn.addEventListener('click',()=>selectOpt(i,btn));
+    optsEl.appendChild(btn);
+  });
+  document.getElementById('fb-el').classList.remove('show');
+  document.getElementById('fb-el').innerHTML='';
+  const bnxt=document.getElementById('btn-next');
+  bnxt.classList.remove('show');
+  bnxt.textContent=cur===qs.length-1?'결과 보기 🏆':'NEXT ▶';
+  document.getElementById('q-card').style.animation='none';
+  requestAnimationFrame(()=>document.getElementById('q-card').style.animation='');
+}
+function updateTimer(){
+  const el=document.getElementById('hud-timer');
+  el.textContent=`${timer}s`;
+  el.style.color=timer<=10?'#ff6060':'var(--pink)';
+  el.style.borderColor=timer<=10?'#ff6060':'var(--pink)';
+}
+function autoTimeOut(){
+  if(answered) return;
+  answered=true;
+  const q=qs[cur];
+  document.querySelectorAll('.opt').forEach((b,i)=>{
+    b.disabled=true;
+    if(i===q.answer) b.classList.add('correct');
+    else b.classList.add('dim');
+  });
+  combo=0;
+  showFeedback(false);
+  document.getElementById('btn-next').classList.add('show');
+}
+function selectOpt(idx,btn){
+  if(answered) return;
+  answered=true;
+  clearInterval(timerHandle);
+  const q=qs[cur];
+  const btns=document.querySelectorAll('.opt');
+  btns.forEach((b,i)=>{
+    b.disabled=true;
+    if(i===q.answer) b.classList.add('correct');
+    else if(i===idx) b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
+  const ok=idx===q.answer;
+  if(ok){
+    score+=Math.max(10,timer*3);combo++;
+    catScores[q.topic]=catScores[q.topic]||{c:0,t:0};
+    catScores[q.topic].c++;
+  } else {
+    combo=0;
+  }
+  catScores[q.topic]=catScores[q.topic]||{c:0,t:0};
+  catScores[q.topic].t++;
+  document.getElementById('score-val').textContent=score;
+  if(combo>=3) showCombo(combo);
+  showFeedback(ok, idx, q);
+  document.getElementById('btn-next').classList.add('show');
+}
+function showFeedback(ok, selectedIdx, q){
+  if(!q) q=qs[cur];
+  const fb=document.getElementById('fb-el');
+  const wrongItems=(q.wrong_explanations||[]).map((w,i)=>{
+    if(!w||i===q.answer) return '';
+    return `<div class="fb-wrong-item"><strong>${OPTS[i]} ${q.options[i]}</strong>${w}</div>`;
+  }).join('');
+  fb.innerHTML=`
+    <div class="fb-header">
+      <span class="fb-result ${ok?'ok':'ng'}">${ok?'✅ 정답!':'❌ 오답'}</span>
+      <span class="fb-label">EXPLANATION</span>
+    </div>
+    ${!ok?`<div class="fb-correct-ans">정답: ${OPTS[q.answer]} ${q.options[q.answer]}</div>`:''}
+    <div class="fb-explain">${q.explanation||''}</div>
+    ${wrongItems?`<div class="fb-wrong-list"><div style="font-size:11px;color:#4a6280;font-weight:700;margin-bottom:6px;letter-spacing:0.05em">[오답해설]</div>${wrongItems}</div>`:''}
+    <div class="fb-stat">
+      <span class="fb-stat-icon">📊</span>
+      <span class="fb-stat-text">이 문제 예상 정답률 <strong>${q.correct_rate||'?'}%</strong></span>
+    </div>
+    ${q.source_url&&q.source_url!=='https://...'?`<a href="${q.source_url}" target="_blank" class="fb-link">📎 기사 원문 →</a>`:''}
+  `;
+  fb.classList.add('show');
+}
+function showCombo(n){
+  const el=document.getElementById('combo-flash');
+  const msgs={3:'3연속! 🔥',5:'5연속!! ⚡',7:'7연속!!! 💥',10:'PERFECT! 👑'};
+  el.textContent=msgs[n]||`${n}연속! 🎯`;
+  el.classList.remove('hide'); el.classList.add('show');
+  setTimeout(()=>{el.classList.remove('show');el.classList.add('hide');},900);
+}
+function nextQ(){
+  cur++;
+  if(cur>=qs.length) showResult();
+  else renderQ();
+}
+
+// ═══ RESULT ═══
+function showResult(){
+  clearInterval(timerHandle);
+  saveStreak();
+  showScreen('result');
+  const total=qs.length;
+  document.getElementById('res-score').textContent=score.toLocaleString();
+  document.getElementById('res-denom').textContent=`/ ${total}문제 도전 완료`;
+  const correctCount=Object.values(catScores).reduce((a,v)=>a+v.c,0);
+  const pct=correctCount/total;
+  const gEl=document.getElementById('res-grade');
+  if(pct>=0.9){gEl.textContent='S등급 — 외교관 수준! 🏆';gEl.className='grade-badge g-s';}
+  else if(pct>=0.7){gEl.textContent='A등급 — 우수! 조금만 더 👍';gEl.className='grade-badge g-a';}
+  else if(pct>=0.5){gEl.textContent='B등급 — 취약 분야 보완 📚';gEl.className='grade-badge g-b';}
+  else{gEl.textContent='C등급 — 다시 도전! 💪';gEl.className='grade-badge g-c';}
+  let html=`<div style="font-size:13px;font-weight:700;color:#8bacc8;margin-bottom:8px">주제별 성적</div>`;
+  Object.entries(catScores).forEach(([t,{c,tot}])=>{
+    html+=`<div class="breakdown-row"><span class="breakdown-label">${t}</span><span class="breakdown-val">${c}/${catScores[t].t}</span></div>`;
+  });
+  html+=`<div class="breakdown-row"><span class="breakdown-label">최종 점수</span><span class="breakdown-val">${score.toLocaleString()}점</span></div>`;
+  document.getElementById('res-breakdown').innerHTML=html;
+}
+function retryToday(){showScreen('quiz');startQuiz();}
+function backToSetup(){clearInterval(timerHandle);showScreen('setup');}
+
+// ═══ ERRORS ═══
+function showErr(m){const e=document.getElementById('err-box');document.getElementById('err-msg').textContent=m;e.classList.add('show');}
+function hideErr(){document.getElementById('err-box').classList.remove('show');}
+</script>
+</body>
+</html>
